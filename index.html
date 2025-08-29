@@ -445,11 +445,12 @@ tlPostBtn.addEventListener('click', async () => {
       createdAt: serverTimestamp()
     });
     tlInput.value = '';
-    await loadTimeline(profile.Role === 'King');
+    await loadTimeline(currentProfile?.Role === 'King');
   } catch(err) {
     alert(`投稿失敗: ${err.message}`);
   }
 });
+
 
 </script>
 </body>
