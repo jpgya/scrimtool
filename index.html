@@ -1,193 +1,428 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>GOLD鯖公式サイト</title>
-<link rel="stylesheet" href="style.css">
+
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#161a22;
+    --muted:#9aa4b2;
+    --text:#e8eaf0;
+    --gold:#c8a951;         /* 落ち着いたゴールド */
+    --gold-weak:#a89245;
+    --accent:#2a2f3a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,Arial,sans-serif}
+  .app{display:flex;min-height:100dvh}
+
+  /* サイドバー */
+  .sidebar{
+    width:240px;flex:0 0 240px;background:var(--panel);border-right:1px solid #202634;
+    transition:width .2s ease;position:relative
+  }
+  .sidebar.collapsed{width:64px;flex-basis:64px}
+  .brand{display:flex;align-items:center;gap:.6rem;padding:16px 14px;border-bottom:1px solid #202634}
+  .brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(145deg,var(--gold),var(--gold-weak));box-shadow:0 0 18px rgba(200,169,81,.35)}
+  .brand span{font-weight:700;letter-spacing:.3px}
+  .toggle{position:absolute;right:-12px;top:14px;width:28px;height:28px;border-radius:50%;border:1px solid #22293a;background:var(--panel);color:var(--text);cursor:pointer}
+  .menu{padding:10px}
+  .tab-btn{
+    width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:none;color:var(--text);
+    padding:12px 14px;border-radius:12px;cursor:pointer;font-weight:600;letter-spacing:.2px
+  }
+  .tab-btn:hover{background:#1c2230}
+  .tab-btn.active{background:linear-gradient(145deg,#1c2230,#1b2230);outline:1px solid #273049}
+  .icon{width:18px;text-align:center;opacity:.85}
+  .collapsed .label{display:none}
+
+  /* メイン */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  header{
+    display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #202634;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent)
+  }
+  header .title{font-weight:800;letter-spacing:.3px}
+  header .user{font-size:.95rem;color:var(--muted)}
+  .content{padding:20px;display:grid;gap:16px}
+
+  /* パネル */
+  .card{
+    background:var(--panel);border:1px solid #202634;border-radius:16px;padding:18px
+  }
+  .card h2{margin:0 0 12px 0;font-size:1.1rem}
+  .muted{color:var(--muted)}
+
+  /* 認証フォーム */
+  .auth-grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:760px){.auth-grid{grid-template-columns:1fr 1fr}}
+  .field{display:grid;gap:6px;margin-bottom:10px}
+  .input,.select,.btn{
+    background:#12161f;border:1px solid #22293a;color:var(--text);
+    padding:12px 14px;border-radius:12px;font-size:0.95rem
+  }
+  .input:focus,.select:focus{outline:2px solid #31405b}
+  .btn{cursor:pointer;font-weight:700;letter-spacing:.2px}
+  .btn.gold{background:linear-gradient(145deg,var(--gold),var(--gold-weak));color:#1b1b1b;border:none}
+  .btn.ghost{background:transparent;border:1px solid #2a344a}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* リスト */
+  ul.list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .item{
+    background:#12161f;border:1px solid #22293a;border-radius:12px;padding:12px;
+    display:flex;justify-content:space-between;align-items:center;gap:12px
+  }
+  .item .time{font-size:.85rem;color:var(--muted)}
+  .item .danger{background:#2a1113;border-color:#4a2023;color:#efb0b5}
+
+  /* 非表示ヘルパ */
+  .hidden{display:none !important}
+</style>
 </head>
 <body>
-<div class="dashboard-container">
+<div class="app">
   <!-- サイドバー -->
-  <div class="sidebar" id="sidebar">
-    <button class="toggle-btn" id="toggle-sidebar">☰</button>
-    <div class="menu">
-      <button class="tab-button active" data-tab="account-tab">アカウント</button>
-      <button class="tab-button" data-tab="news-tab">ニュース</button>
-      <button class="tab-button" data-tab="tl-tab">TL</button>
+  <aside id="sidebar" class="sidebar hidden"><!-- 未ログイン時は非表示 -->
+    <div class="brand">
+      <div class="logo"></div>
+      <span class="label">GOLD鯖</span>
+      <button id="toggle" class="toggle" title="折りたたみ">≡</button>
     </div>
-  </div>
+    <nav id="menu" class="menu">
+      <button class="tab-btn active" data-tab="account"><span class="icon">👤</span><span class="label">アカウント</span></button>
+      <button class="tab-btn" data-tab="news"><span class="icon">📰</span><span class="label">ニュース</span></button>
+      <button class="tab-btn" data-tab="tl"><span class="icon">💬</span><span class="label">TL</span></button>
+    </nav>
+  </aside>
 
-  <!-- メインコンテンツ -->
-  <div class="main-content" id="main-content">
-    <!-- ログイン / 新規登録 -->
-    <div id="auth-container">
-      <h1>GOLD鯖公式サイト</h1>
-      <div class="auth-forms">
-        <form id="login-form">
-          <h2>ログイン</h2>
-          <input type="email" id="login-email" placeholder="メールアドレス" required>
-          <input type="password" id="login-password" placeholder="パスワード" required>
-          <button type="submit">ログイン</button>
-        </form>
-        <form id="register-form">
-          <h2>新規登録</h2>
-          <input type="email" id="reg-email" placeholder="メールアドレス" required>
-          <input type="password" id="reg-password" placeholder="パスワード" required>
-          <button type="submit">登録</button>
-        </form>
+  <!-- メイン -->
+  <main class="main">
+    <header>
+      <div class="title">GOLD鯖 公式サイト</div>
+      <div class="user"><span id="userEmail" class="muted">未ログイン</span></div>
+    </header>
+
+    <section class="content">
+      <!-- 認証（ログイン／新規登録） -->
+      <div id="authCard" class="card">
+        <h2>ログイン / 新規登録</h2>
+        <p class="muted">メール＆パスワードで認証します。</p>
+        <div class="auth-grid">
+          <form id="loginForm" class="card" onsubmit="return false;">
+            <h2>ログイン</h2>
+            <label class="field">メール<input id="loginEmail" class="input" type="email" required></label>
+            <label class="field">パスワード<input id="loginPass" class="input" type="password" required></label>
+            <button class="btn gold" id="loginBtn">ログイン</button>
+          </form>
+          <form id="regForm" class="card" onsubmit="return false;">
+            <h2>新規登録</h2>
+            <label class="field">メール<input id="regEmail" class="input" type="email" required></label>
+            <label class="field">パスワード<input id="regPass" class="input" type="password" required></label>
+            <button class="btn ghost" id="regBtn">登録</button>
+          </form>
+        </div>
       </div>
-    </div>
 
-    <!-- アカウントタブ -->
-    <div class="tab-content" id="account-tab" style="display:none;">
-      <h2>アカウント設定</h2>
-      <p>ようこそ、<span id="user-email"></span>さん</p>
-      <label>ユーザー名: <input type="text" id="username"></label>
-      <label>通知:
-        <select id="notify">
-          <option value="all">すべて</option>
-          <option value="important">重要のみ</option>
-          <option value="none">なし</option>
-        </select>
-      </label>
-      <button id="save-settings">保存</button>
-      <button id="logout">ログアウト</button>
-    </div>
-
-    <!-- ニュースタブ -->
-    <div class="tab-content" id="news-tab" style="display:none;">
-      <h2>公式ニュース</h2>
-      <ul id="news-list"></ul>
-      <div id="news-admin-controls" style="display:none;">
-        <button id="post-news">ニュース投稿</button>
+      <!-- アカウント -->
+      <div id="tab-account" class="card hidden">
+        <h2>アカウント設定</h2>
+        <div class="row">
+          <label class="field" style="min-width:240px;flex:1">
+            ユーザー名
+            <input id="username" class="input" placeholder="GOLD鯖ネーム"/>
+          </label>
+          <label class="field" style="min-width:240px;width:240px">
+            通知
+            <select id="notify" class="select">
+              <option value="all">すべて</option>
+              <option value="important">重要のみ</option>
+              <option value="none">なし</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <button id="saveProfile" class="btn gold">保存</button>
+          <button id="logout" class="btn ghost">ログアウト</button>
+        </div>
+        <p id="roleBadge" class="muted" style="margin-top:10px"></p>
       </div>
-    </div>
 
-    <!-- TLタブ -->
-    <div class="tab-content" id="tl-tab" style="display:none;">
-      <h2>タイムライン</h2>
-      <ul id="tl-list"></ul>
-    </div>
-  </div>
+      <!-- ニュース -->
+      <div id="tab-news" class="card hidden">
+        <h2>公式ニュース</h2>
+        <ul id="newsList" class="list"></ul>
+        <div id="newsAdmin" class="row hidden" style="margin-top:10px">
+          <button id="postNews" class="btn gold">ニュース投稿（管理者）</button>
+        </div>
+      </div>
+
+      <!-- TL -->
+      <div id="tab-tl" class="card hidden">
+        <h2>タイムライン</h2>
+        <ul id="tlList" class="list"></ul>
+        <!-- ※要件上、投稿は管理者だけでOK。一般投稿を開けたい場合はここにフォームを追加 -->
+      </div>
+    </section>
+  </main>
 </div>
 
+<!-- Firebase（ESM） -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, collection, addDoc, deleteDoc,
+    getDocs, serverTimestamp, query, orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-// Firebase設定
-const firebaseConfig = {
-  apiKey: "AIzaSyBqXi5wgR6yTgg_O70wk_I7tZsEIBT3kyI",
-  authDomain: "gold-50f64.firebaseapp.com",
-  projectId: "gold-50f64",
-  storageBucket: "gold-50f64.firebasestorage.app",
-  messagingSenderId: "880208667520",
-  appId: "1:880208667520:web:64ad9329d1a4ab61385765"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+  /* ▼▼ ここを自分のFirebase設定に置き換える ▼▼ */
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  /* ▲▲ ここまで ▲▲ */
 
-// DOM
-const authContainer = document.getElementById('auth-container');
-const mainContent = document.getElementById('main-content');
-const userEmailSpan = document.getElementById('user-email');
-const tabs = document.querySelectorAll('.tab-button');
-const tabContents = document.querySelectorAll('.tab-content');
+  // 初期化
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
 
-// タブ切替
-tabs.forEach(tab=>{
-  tab.addEventListener('click',()=>{
-    tabs.forEach(t=>t.classList.remove('active'));
-    tab.classList.add('active');
-    tabContents.forEach(tc=>tc.style.display='none');
-    document.getElementById(tab.dataset.tab).style.display='block';
+  // DOM 取得
+  const sidebar     = document.getElementById('sidebar');
+  const toggle      = document.getElementById('toggle');
+  const menu        = document.getElementById('menu');
+  const userEmailEl = document.getElementById('userEmail');
+
+  const authCard    = document.getElementById('authCard');
+  const loginForm   = document.getElementById('loginForm');
+  const regForm     = document.getElementById('regForm');
+  const loginBtn    = document.getElementById('loginBtn');
+  const regBtn      = document.getElementById('regBtn');
+
+  const tabAccount  = document.getElementById('tab-account');
+  const tabNews     = document.getElementById('tab-news');
+  const tabTl       = document.getElementById('tab-tl');
+
+  const usernameInp = document.getElementById('username');
+  const notifySel   = document.getElementById('notify');
+  const saveProfile = document.getElementById('saveProfile');
+  const logoutBtn   = document.getElementById('logout');
+  const roleBadge   = document.getElementById('roleBadge');
+
+  const newsList    = document.getElementById('newsList');
+  const newsAdmin   = document.getElementById('newsAdmin');
+  const postNewsBtn = document.getElementById('postNews');
+
+  const tlList      = document.getElementById('tlList');
+
+  /* ユーティリティ */
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  function show(el){ el.classList.remove('hidden'); }
+  function hide(el){ el.classList.add('hidden'); }
+  function setActiveTab(name){
+    // サイドのボタン見た目
+    $$('.tab-btn', menu).forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+    // コンテンツ表示
+    hide(tabAccount); hide(tabNews); hide(tabTl);
+    const map = { account:tabAccount, news:tabNews, tl:tabTl };
+    show(map[name]);
+  }
+  function fmt(ts){
+    try{
+      const d = ts?.toDate ? ts.toDate() : new Date(ts);
+      return new Intl.DateTimeFormat('ja-JP', { dateStyle:'short', timeStyle:'short' }).format(d);
+    }catch{return '';}
+  }
+
+  /* サイドバー折りたたみ */
+  toggle?.addEventListener('click', ()=> sidebar.classList.toggle('collapsed'));
+
+  /* タブ切替（ログイン後にのみ動く） */
+  menu.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.tab-btn');
+    if(!btn) return;
+    setActiveTab(btn.dataset.tab);
   });
-});
 
-// サイドバー折りたたみ
-document.getElementById('toggle-sidebar').addEventListener('click',()=>{document.getElementById('sidebar').classList.toggle('collapsed');});
+  /* 認証：ログイン */
+  loginBtn.addEventListener('click', async ()=>{
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    try{
+      await signInWithEmailAndPassword(auth, email, pass);
+    }catch(err){ alert(`ログイン失敗: ${err.message}`); }
+  });
 
-// ログイン
-document.getElementById('login-form').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const email=document.getElementById('login-email').value;
-  const password=document.getElementById('login-password').value;
-  try{await signInWithEmailAndPassword(auth,email,password);}
-  catch(err){alert(err.message);}
-});
+  /* 認証：新規登録 */
+  regBtn.addEventListener('click', async ()=>{
+    const email = document.getElementById('regEmail').value.trim();
+    const pass  = document.getElementById('regPass').value;
+    try{
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      // 初期プロフィール作成（一般ユーザー）
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        Role:'User', username:'', notify:'all', createdAt: serverTimestamp()
+      });
+      alert('登録成功！ログインしました。');
+    }catch(err){ alert(`登録失敗: ${err.message}`); }
+  });
 
-// 新規登録
-document.getElementById('register-form').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const email=document.getElementById('reg-email').value;
-  const password=document.getElementById('reg-password').value;
-  try{
-    const userCredential = await createUserWithEmailAndPassword(auth,email,password);
-    // Firestoreに初期データ作成
-    await setDoc(doc(db,'users',userCredential.user.uid),{Role:'User',username:'',notify:'all'});
-    alert('登録成功！ログインしてください。');
-  } catch(err){alert(err.message);}
-});
+  /* プロフィール保存 */
+  saveProfile.addEventListener('click', async ()=>{
+    const u = auth.currentUser; if(!u) return;
+    try{
+      await setDoc(doc(db,'users',u.uid), {
+        username: usernameInp.value.trim(),
+        notify:   notifySel.value
+      }, { merge:true });
+      alert('保存しました');
+    }catch(err){ alert(`保存失敗: ${err.message}`); }
+  });
 
-// ログアウト
-document.getElementById('logout').addEventListener('click',async()=>{await signOut(auth);});
+  /* ログアウト */
+  logoutBtn.addEventListener('click', async ()=>{
+    await signOut(auth);
+  });
 
-// 設定保存（フロントのみ）
-document.getElementById('save-settings').addEventListener('click',async()=>{
-  const username=document.getElementById('username').value;
-  const notify=document.getElementById('notify').value;
-  const user = auth.currentUser;
-  if(user){ await setDoc(doc(db,'users',user.uid),{username,notify},{merge:true}); alert('保存しました'); }
-});
+  /* ニュース投稿（管理者のみ） */
+  postNewsBtn.addEventListener('click', async ()=>{
+    const title = prompt('ニュースタイトル');
+    if(!title) return;
+    try{
+      await addDoc(collection(db,'news'), {
+        title:title.trim(),
+        createdAt: serverTimestamp()
+      });
+    }catch(err){ alert(`投稿失敗: ${err.message}`); }
+  });
 
-// 認証監視
-onAuthStateChanged(auth,async user=>{
-  if(user){
-    authContainer.style.display='none';
-    tabContents.forEach(tc=>tc.style.display='none');
-    document.getElementById('account-tab').style.display='block';
-    mainContent.style.display='block';
-    userEmailSpan.textContent=user.email;
-
-    // ユーザー情報取得
-    const userDoc = await getDoc(doc(db,'users',user.uid));
-    const userData = userDoc.data();
-    const isAdmin = userData?.Role==='King';
-    if(isAdmin) document.getElementById("news-admin-controls").style.display='block';
-
-    // ニュース読み込み
-    const newsCol=collection(db,"news");
-    const newsSnap=await getDocs(newsCol);
-    const newsList=document.getElementById("news-list"); newsList.innerHTML="";
-    newsSnap.forEach(n=>{
-      const li=document.createElement("li");
-      li.textContent=n.data().title;
-      if(isAdmin){const delBtn=document.createElement("button");delBtn.textContent="削除";delBtn.onclick=async()=>{await deleteDoc(doc(db,"news",n.id));li.remove();};li.appendChild(delBtn);}
-      newsList.appendChild(li);
-    });
-
-    // TL読み込み
-    const tlCol=collection(db,"timeline");
-    const tlSnap=await getDocs(tlCol);
-    const tlList=document.getElementById("tl-list"); tlList.innerHTML="";
-    tlSnap.forEach(t=>{
-      const li=document.createElement("li"); li.textContent=t.data().text;
-      if(isAdmin){const delBtn=document.createElement("button");delBtn.textContent="削除";delBtn.onclick=async()=>{await deleteDoc(doc(db,"timeline",t.id));li.remove();};li.appendChild(delBtn);}
-      tlList.appendChild(li);
-    });
-
-    // ニュース投稿
-    document.getElementById("post-news").onclick=async()=>{
-      const title=prompt("ニュースタイトルを入力:");
-      if(title){await addDoc(collection(db,"news"),{title,timestamp:Date.now()});location.reload();}
+  /* 認証状態監視 */
+  onAuthStateChanged(auth, async (user)=>{
+    if(!user){
+      // 未ログイン
+      userEmailEl.textContent = '未ログイン';
+      show(authCard);
+      hide(sidebar);
+      hide(tabAccount); hide(tabNews); hide(tabTl);
+      return;
     }
 
-  } else { authContainer.style.display='block'; mainContent.style.display='none'; }
-});
+    // ログイン後
+    userEmailEl.textContent = user.email;
+    hide(authCard);
+    show(sidebar);
+
+    // プロフィール取得（なければ作成）
+    let profileSnap = await getDoc(doc(db,'users',user.uid));
+    if(!profileSnap.exists()){
+      await setDoc(doc(db,'users',user.uid), { Role:'User', username:'', notify:'all', createdAt: serverTimestamp() });
+      profileSnap = await getDoc(doc(db,'users',user.uid));
+    }
+    const profile = profileSnap.data() || {};
+    usernameInp.value = profile.username ?? '';
+    notifySel.value   = profile.notify   ?? 'all';
+    const isAdmin = profile.Role === 'King';
+    roleBadge.textContent = `あなたの権限: ${profile.Role ?? 'User'}` + (isAdmin ? '（管理者）' : '');
+
+    // 権限UI
+    if(isAdmin) show(newsAdmin); else hide(newsAdmin);
+
+    // まず「アカウント」タブに自動遷移（←ここが前回の不具合対策）
+    setActiveTab('account');
+
+    // ニュース読み込み
+    await loadNews(isAdmin);
+    // TL読み込み
+    await loadTimeline(isAdmin);
+  });
+
+  async function loadNews(isAdmin){
+    newsList.innerHTML = '<li class="item"><span class="muted">読み込み中...</span></li>';
+    try{
+      const qRef = query(collection(db,'news'), orderBy('createdAt','desc'));
+      const snap = await getDocs(qRef);
+      newsList.innerHTML = '';
+      if(snap.empty){
+        newsList.innerHTML = '<li class="item"><span class="muted">ニュースはまだありません。</span></li>';
+        return;
+      }
+      snap.forEach(docSnap=>{
+        const d = docSnap.data();
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `
+          <div>
+            <div>${d.title ?? '(無題)'}</div>
+            <div class="time">${fmt(d.createdAt)}</div>
+          </div>
+        `;
+        if(isAdmin){
+          const del = document.createElement('button');
+          del.className = 'btn danger';
+          del.textContent = '削除';
+          del.addEventListener('click', async()=>{
+            if(confirm('削除しますか？')){
+              await deleteDoc(doc(db,'news',docSnap.id));
+              li.remove();
+            }
+          });
+          li.appendChild(del);
+        }
+        newsList.appendChild(li);
+      });
+    }catch(err){
+      newsList.innerHTML = `<li class="item"><span class="muted">読み込み失敗: ${err.message}</span></li>`;
+    }
+  }
+
+  async function loadTimeline(isAdmin){
+    tlList.innerHTML = '<li class="item"><span class="muted">読み込み中...</span></li>';
+    try{
+      const qRef = query(collection(db,'timeline'), orderBy('createdAt','desc'));
+      const snap = await getDocs(qRef);
+      tlList.innerHTML = '';
+      if(snap.empty){
+        tlList.innerHTML = '<li class="item"><span class="muted">TL投稿はまだありません。</span></li>';
+        return;
+      }
+      snap.forEach(docSnap=>{
+        const d = docSnap.data();
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `
+          <div>
+            <div>${d.text ?? ''}</div>
+            <div class="time">${fmt(d.createdAt)} ${d.author ? `・${d.author}`:''}</div>
+          </div>
+        `;
+        if(isAdmin){
+          const del = document.createElement('button');
+          del.className = 'btn danger';
+          del.textContent = '削除';
+          del.addEventListener('click', async()=>{
+            if(confirm('この投稿を削除しますか？')){
+              await deleteDoc(doc(db,'timeline',docSnap.id));
+              li.remove();
+            }
+          });
+          li.appendChild(del);
+        }
+        tlList.appendChild(li);
+      });
+    }catch(err){
+      tlList.innerHTML = `<li class="item"><span class="muted">読み込み失敗: ${err.message}</span></li>`;
+    }
+  }
 </script>
-<link rel="stylesheet" href="style.css">
 </body>
 </html>
