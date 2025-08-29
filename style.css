@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+body{margin:0;padding:0;font-family:'Montserrat',sans-serif;background:linear-gradient(135deg,#FFD700,#FF8C00);}
+.dashboard-container{display:flex;min-height:100vh;}
+.sidebar{width:200px;background:rgba(0,0,0,0.3);backdrop-filter:blur(10px);color:#fff;transition:0.3s;display:flex;flex-direction:column;}
+.sidebar.collapsed{width:50px;}
+.toggle-btn{background:none;border:none;color:#fff;font-size:1.5rem;padding:10px;cursor:pointer;}
+.menu{flex:1;display:flex;flex-direction:column;margin-top:20px;}
+.tab-button{background:none;border:none;color:#fff;padding:15px;text-align:left;cursor:pointer;font-weight:bold;transition:0.3s;}
+.tab-button.active{background:#FFD700;color:#000;border-radius:10px;margin:5px;}
+.main-content{flex:1;padding:30px;overflow:auto;}
+.tab-content{display:block;}
+input,select,button{margin:5px 0;padding:10px;border-radius:10px;border:none;outline:none;}
+button{cursor:pointer;transition:0.3s;}
+button:hover{opacity:0.8;}
+ul{list-style:none;padding:0;}
+li{margin:5px 0;background:rgba(255,255,255,0.2);padding:8px;border-radius:5px;display:flex;justify-content:space-between;align-items:center;}
