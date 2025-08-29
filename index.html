@@ -163,7 +163,12 @@
       <div id="tab-tl" class="card hidden">
         <h2>タイムライン</h2>
         <ul id="tlList" class="list"></ul>
-        <!-- ※要件上、投稿は管理者だけでOK。一般投稿を開けたい場合はここにフォームを追加 -->
+        <!-- TL投稿フォーム -->
+<div class="field">
+  <textarea id="tlInput" class="input" placeholder="投稿内容を入力"></textarea>
+</div>
+<button id="tlPostBtn" class="btn gold">投稿する</button>
+
       </div>
     </section>
   </main>
@@ -405,24 +410,47 @@
             <div class="time">${fmt(d.createdAt)} ${d.author ? `・${d.author}`:''}</div>
           </div>
         `;
-        if(isAdmin){
-          const del = document.createElement('button');
-          del.className = 'btn danger';
-          del.textContent = '削除';
-          del.addEventListener('click', async()=>{
-            if(confirm('この投稿を削除しますか？')){
-              await deleteDoc(doc(db,'timeline',docSnap.id));
-              li.remove();
-            }
-          });
-          li.appendChild(del);
-        }
+        if(isAdmin || d.author === auth.currentUser.email){
+  const del = document.createElement('button');
+  del.className = 'btn danger';
+  del.textContent = '削除';
+  del.addEventListener('click', async()=>{
+    if(confirm('この投稿を削除しますか？')){
+      await deleteDoc(doc(db,'timeline',docSnap.id));
+      li.remove();
+    }
+  });
+  li.appendChild(del);
+}
+
         tlList.appendChild(li);
       });
     }catch(err){
       tlList.innerHTML = `<li class="item"><span class="muted">読み込み失敗: ${err.message}</span></li>`;
     }
   }
+
+  const tlInput   = document.getElementById('tlInput');
+const tlPostBtn = document.getElementById('tlPostBtn');
+
+tlPostBtn.addEventListener('click', async () => {
+  const text = tlInput.value.trim();
+  if(!text) return alert('内容を入力してください');
+  const u = auth.currentUser;
+  if(!u) return alert('ログインしてください');
+  try {
+    await addDoc(collection(db,'timeline'), {
+      text, 
+      author: u.email,
+      createdAt: serverTimestamp()
+    });
+    tlInput.value = '';
+    await loadTimeline(profile.Role === 'King');
+  } catch(err) {
+    alert(`投稿失敗: ${err.message}`);
+  }
+});
+
 </script>
 </body>
 </html>
