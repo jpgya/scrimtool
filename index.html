@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOLD鯖公式サイト</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="dashboard-container">
+  <!-- サイドバー -->
+  <div class="sidebar" id="sidebar">
+    <button class="toggle-btn" id="toggle-sidebar">☰</button>
+    <div class="menu">
+      <button class="tab-button active" data-tab="account-tab">アカウント</button>
+      <button class="tab-button" data-tab="news-tab">ニュース</button>
+      <button class="tab-button" data-tab="tl-tab">TL</button>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="main-content" id="main-content">
+    <div id="login-container">
+      <h1>GOLD鯖公式サイト</h1>
+      <form id="login-form">
+        <input type="email" id="email" placeholder="メールアドレス" required>
+        <input type="password" id="password" placeholder="パスワード" required>
+        <button type="submit">ログイン</button>
+      </form>
+    </div>
+
+    <div class="tab-content" id="account-tab" style="display:none;">
+      <h2>アカウント設定</h2>
+      <p>ようこそ、<span id="user-email"></span>さん</p>
+      <label>ユーザー名: <input type="text" id="username"></label>
+      <label>通知:
+        <select id="notify">
+          <option value="all">すべて</option>
+          <option value="important">重要のみ</option>
+          <option value="none">なし</option>
+        </select>
+      </label>
+      <button id="save-settings">保存</button>
+      <button id="logout">ログアウト</button>
+    </div>
+
+    <div class="tab-content" id="news-tab" style="display:none;">
+      <h2>公式ニュース</h2>
+      <ul id="news-list"></ul>
+      <div id="news-admin-controls" style="display:none;">
+        <button id="post-news">ニュース投稿</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tl-tab" style="display:none;">
+      <h2>タイムライン</h2>
+      <ul id="tl-list"></ul>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js";
+
+// Firebase設定
+const firebaseConfig = {
+    apiKey: "AIzaSyBqXi5wgR6yTgg_O70wk_I7tZsEIBT3kyI",
+    authDomain: "gold-50f64.firebaseapp.com",
+    projectId: "gold-50f64",
+    storageBucket: "gold-50f64.firebasestorage.app",
+    messagingSenderId: "880208667520",
+    appId: "1:880208667520:web:64ad9329d1a4ab61385765"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const loginContainer = document.getElementById('login-container');
+const mainContent = document.getElementById('main-content');
+const userEmailSpan = document.getElementById('user-email');
+
+// サイドバータブ切替
+const tabs = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    tabContents.forEach(tc => tc.style.display='none');
+    document.getElementById(tab.dataset.tab).style.display='block';
+  });
+});
+
+// サイドバー折りたたみ
+const sidebar = document.getElementById('sidebar');
+document.getElementById('toggle-sidebar').addEventListener('click', () => {
+  sidebar.classList.toggle('collapsed');
+});
+
+// ログイン
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try { await signInWithEmailAndPassword(auth, email, password); }
+  catch(err){ alert(err.message); }
+});
+
+// ログアウト
+document.getElementById('logout').addEventListener('click', async()=>{await signOut(auth);});
+
+// 設定保存（フロントのみ）
+document.getElementById('save-settings').addEventListener('click', () => {
+  const username = document.getElementById('username').value;
+  const notify = document.getElementById('notify').value;
+  alert(`保存しました\nユーザー名: ${username}\n通知: ${notify}`);
+});
+
+// 認証監視
+onAuthStateChanged(auth, async user => {
+  if(user){
+    loginContainer.style.display='none';
+    mainContent.style.display='block';
+    userEmailSpan.textContent = user.email;
+
+    // ユーザー情報取得
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const userData = userDoc.data();
+    const isAdmin = userData?.Role === "King";
+    if(isAdmin) document.getElementById("news-admin-controls").style.display='block';
+
+    // ニュース読み込み
+    const newsCol = collection(db,"news");
+    const newsSnap = await getDocs(newsCol);
+    const newsList = document.getElementById("news-list");
+    newsList.innerHTML="";
+    newsSnap.forEach(n=>{
+      const li = document.createElement("li");
+      li.textContent = n.data().title;
+      if(isAdmin){
+        const delBtn = document.createElement("button");
+        delBtn.textContent="削除";
+        delBtn.onclick=async()=>{await deleteDoc(doc(db,"news",n.id));li.remove();}
+        li.appendChild(delBtn);
+      }
+      newsList.appendChild(li);
+    });
+
+    // TL読み込み
+    const tlCol = collection(db,"timeline");
+    const tlSnap = await getDocs(tlCol);
+    const tlList = document.getElementById("tl-list");
+    tlList.innerHTML="";
+    tlSnap.forEach(t=>{
+      const li=document.createElement("li");
+      li.textContent=t.data().text;
+      if(isAdmin){
+        const delBtn=document.createElement("button");
+        delBtn.textContent="削除";
+        delBtn.onclick=async()=>{await deleteDoc(doc(db,"timeline",t.id));li.remove();}
+        li.appendChild(delBtn);
+      }
+      tlList.appendChild(li);
+    });
+
+    // ニュース投稿
+    document.getElementById("post-news").onclick=async()=>{
+      const title=prompt("ニュースタイトルを入力:");
+      if(title){await addDoc(collection(db,"news"),{title,timestamp:Date.now()});location.reload();}
+    }
+  } else {
+    loginContainer.style.display='block';
+    mainContent.style.display='none';
+  }
+});
+</script>
+<link rel="stylesheet" href="style.css">
+</body>
+</html>
