@@ -186,23 +186,24 @@
     getDocs, serverTimestamp, query, orderBy
   } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-  /* ▼▼ ここを自分のFirebase設定に置き換える ▼▼ */
+  /* Firebase設定 */
   const firebaseConfig = {
-  apiKey: "AIzaSyBqXi5wgR6yTgg_O70wk_I7tZsEIBT3kyI",
-  authDomain: "gold-50f64.firebaseapp.com",
-  projectId: "gold-50f64",
-  storageBucket: "gold-50f64.firebasestorage.app",
-  messagingSenderId: "880208667520",
-  appId: "1:880208667520:web:64ad9329d1a4ab61385765"
-};
-  /* ▲▲ ここまで ▲▲ */
+    apiKey: "AIzaSyBqXi5wgR6yTgg_O70wk_I7tZsEIBT3kyI",
+    authDomain: "gold-50f64.firebaseapp.com",
+    projectId: "gold-50f64",
+    storageBucket: "gold-50f64.firebasestorage.app",
+    messagingSenderId: "880208667520",
+    appId: "1:880208667520:web:64ad9329d1a4ab61385765"
+  };
 
-  // 初期化
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
-  // DOM 取得
+  // グローバル変数
+  let currentProfile = null;
+
+  // DOM取得
   const sidebar     = document.getElementById('sidebar');
   const toggle      = document.getElementById('toggle');
   const menu        = document.getElementById('menu');
@@ -229,15 +230,15 @@
   const postNewsBtn = document.getElementById('postNews');
 
   const tlList      = document.getElementById('tlList');
+  const tlInput     = document.getElementById('tlInput');
+  const tlPostBtn   = document.getElementById('tlPostBtn');
 
-  /* ユーティリティ */
+  // ユーティリティ
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
   function show(el){ el.classList.remove('hidden'); }
   function hide(el){ el.classList.add('hidden'); }
   function setActiveTab(name){
-    // サイドのボタン見た目
     $$('.tab-btn', menu).forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-    // コンテンツ表示
     hide(tabAccount); hide(tabNews); hide(tabTl);
     const map = { account:tabAccount, news:tabNews, tl:tabTl };
     show(map[name]);
@@ -249,17 +250,17 @@
     }catch{return '';}
   }
 
-  /* サイドバー折りたたみ */
+  // サイドバー折りたたみ
   toggle?.addEventListener('click', ()=> sidebar.classList.toggle('collapsed'));
 
-  /* タブ切替（ログイン後にのみ動く） */
+  // タブ切替
   menu.addEventListener('click', (e)=>{
     const btn = e.target.closest('.tab-btn');
     if(!btn) return;
     setActiveTab(btn.dataset.tab);
   });
 
-  /* 認証：ログイン */
+  // ログイン
   loginBtn.addEventListener('click', async ()=>{
     const email = document.getElementById('loginEmail').value.trim();
     const pass  = document.getElementById('loginPass').value;
@@ -268,13 +269,12 @@
     }catch(err){ alert(`ログイン失敗: ${err.message}`); }
   });
 
-  /* 認証：新規登録 */
+  // 新規登録
   regBtn.addEventListener('click', async ()=>{
     const email = document.getElementById('regEmail').value.trim();
     const pass  = document.getElementById('regPass').value;
     try{
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      // 初期プロフィール作成（一般ユーザー）
       await setDoc(doc(db, 'users', cred.user.uid), {
         Role:'User', username:'', notify:'all', createdAt: serverTimestamp()
       });
@@ -282,7 +282,7 @@
     }catch(err){ alert(`登録失敗: ${err.message}`); }
   });
 
-  /* プロフィール保存 */
+  // プロフィール保存
   saveProfile.addEventListener('click', async ()=>{
     const u = auth.currentUser; if(!u) return;
     try{
@@ -294,12 +294,12 @@
     }catch(err){ alert(`保存失敗: ${err.message}`); }
   });
 
-  /* ログアウト */
+  // ログアウト
   logoutBtn.addEventListener('click', async ()=>{
     await signOut(auth);
   });
 
-  /* ニュース投稿（管理者のみ） */
+  // ニュース投稿
   postNewsBtn.addEventListener('click', async ()=>{
     const title = prompt('ニュースタイトル');
     if(!title) return;
@@ -311,10 +311,10 @@
     }catch(err){ alert(`投稿失敗: ${err.message}`); }
   });
 
-  /* 認証状態監視 */
+  // 認証状態監視
   onAuthStateChanged(auth, async (user)=>{
     if(!user){
-      // 未ログイン
+      currentProfile = null;
       userEmailEl.textContent = '未ログイン';
       show(authCard);
       hide(sidebar);
@@ -322,35 +322,30 @@
       return;
     }
 
-    // ログイン後
     userEmailEl.textContent = user.email;
     hide(authCard);
     show(sidebar);
 
-    // プロフィール取得（なければ作成）
     let profileSnap = await getDoc(doc(db,'users',user.uid));
     if(!profileSnap.exists()){
       await setDoc(doc(db,'users',user.uid), { Role:'User', username:'', notify:'all', createdAt: serverTimestamp() });
       profileSnap = await getDoc(doc(db,'users',user.uid));
     }
-    const profile = profileSnap.data() || {};
-    usernameInp.value = profile.username ?? '';
-    notifySel.value   = profile.notify   ?? 'all';
-    const isAdmin = profile.Role === 'King';
-    roleBadge.textContent = `あなたの権限: ${profile.Role ?? 'User'}` + (isAdmin ? '（管理者）' : '');
+    currentProfile = profileSnap.data() || {};
+    usernameInp.value = currentProfile.username ?? '';
+    notifySel.value   = currentProfile.notify   ?? 'all';
+    const isAdmin = currentProfile.Role === 'King';
+    roleBadge.textContent = `あなたの権限: ${currentProfile.Role ?? 'User'}` + (isAdmin ? '（管理者）' : '');
 
-    // 権限UI
     if(isAdmin) show(newsAdmin); else hide(newsAdmin);
 
-    // まず「アカウント」タブに自動遷移（←ここが前回の不具合対策）
     setActiveTab('account');
 
-    // ニュース読み込み
     await loadNews(isAdmin);
-    // TL読み込み
     await loadTimeline(isAdmin);
   });
 
+  // ニュース読み込み
   async function loadNews(isAdmin){
     newsList.innerHTML = '<li class="item"><span class="muted">読み込み中...</span></li>';
     try{
@@ -390,6 +385,7 @@
     }
   }
 
+  // TL読み込み
   async function loadTimeline(isAdmin){
     tlList.innerHTML = '<li class="item"><span class="muted">読み込み中...</span></li>';
     try{
@@ -411,18 +407,17 @@
           </div>
         `;
         if(isAdmin || d.author === auth.currentUser.email){
-  const del = document.createElement('button');
-  del.className = 'btn danger';
-  del.textContent = '削除';
-  del.addEventListener('click', async()=>{
-    if(confirm('この投稿を削除しますか？')){
-      await deleteDoc(doc(db,'timeline',docSnap.id));
-      li.remove();
-    }
-  });
-  li.appendChild(del);
-}
-
+          const del = document.createElement('button');
+          del.className = 'btn danger';
+          del.textContent = '削除';
+          del.addEventListener('click', async()=>{
+            if(confirm('この投稿を削除しますか？')){
+              await deleteDoc(doc(db,'timeline',docSnap.id));
+              li.remove();
+            }
+          });
+          li.appendChild(del);
+        }
         tlList.appendChild(li);
       });
     }catch(err){
@@ -430,28 +425,26 @@
     }
   }
 
-  const tlInput   = document.getElementById('tlInput');
-const tlPostBtn = document.getElementById('tlPostBtn');
-
-tlPostBtn.addEventListener('click', async () => {
-  const text = tlInput.value.trim();
-  if(!text) return alert('内容を入力してください');
-  const u = auth.currentUser;
-  if(!u) return alert('ログインしてください');
-  try {
-    await addDoc(collection(db,'timeline'), {
-      text, 
-      author: u.email,
-      createdAt: serverTimestamp()
-    });
-    tlInput.value = '';
-    await loadTimeline(currentProfile?.Role === 'King');
-  } catch(err) {
-    alert(`投稿失敗: ${err.message}`);
-  }
-});
-
+  // TL投稿
+  tlPostBtn.addEventListener('click', async () => {
+    const text = tlInput.value.trim();
+    if(!text) return alert('内容を入力してください');
+    const u = auth.currentUser;
+    if(!u) return alert('ログインしてください');
+    try {
+      await addDoc(collection(db,'timeline'), {
+        text, 
+        author: u.email,
+        createdAt: serverTimestamp()
+      });
+      tlInput.value = '';
+      await loadTimeline(currentProfile?.Role === 'King');
+    } catch(err) {
+      alert(`投稿失敗: ${err.message}`);
+    }
+  });
 
 </script>
+
 </body>
 </html>
