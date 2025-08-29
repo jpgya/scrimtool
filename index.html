@@ -302,7 +302,7 @@
 
   // ニュース投稿
   postNewsBtn.addEventListener('click', async ()=>{
-    const title = prompt('ニュースタイトル');
+    const title = prompt('ニュースの内容');
     if(!title) return;
     try{
       await addDoc(collection(db,'news'), {
