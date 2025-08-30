@@ -407,7 +407,7 @@
             <div class="time">${fmt(d.createdAt)} ${d.author ? `・${d.author}`:''}</div>
           </div>
         `;
-        if(isAdmin || d.author === auth.currentUser.email){
+        if(isAdmin || d.author === auth.currentUser.username){
           const del = document.createElement('button');
           del.className = 'btn danger';
           del.textContent = '削除';
