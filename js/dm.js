@@ -1,6 +1,5 @@
-// js/dm.js
 import { auth, db } from "./firebase.js";
-import { collection, doc, getDoc, query, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { collection, doc, getDoc, query, where, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const messagesDiv = document.getElementById("messages");
 const msgInput = document.getElementById("msgInput");
@@ -44,7 +43,7 @@ auth.onAuthStateChanged(async user => {
     chatHeader.textContent = `DM: ${currentChatName}`;
 
     // メッセージを読み込む
-    loadMessages(myUid, currentChatUid, currentChatName);
+    loadMessages(myUid);
 
     // 送信ボタンを有効化
     sendBtn.disabled = false;
@@ -52,7 +51,6 @@ auth.onAuthStateChanged(async user => {
       const text = msgInput.value.trim();
       if (!text) return;
 
-      // messages コレクションが存在しなくても addDoc で自動作成される
       await addDoc(collection(db, "messages"), {
         fromUid: myUid,
         fromName: auth.currentUser.displayName || "名無し",
@@ -72,30 +70,36 @@ auth.onAuthStateChanged(async user => {
   }
 });
 
-function loadMessages(myUid, targetUid, targetName) {
-  messagesDiv.innerHTML = "<p>読み込み中…</p>";
-
+function loadMessages(myUid) {
+  // 投稿IDで絞り込む
   const q = query(
     collection(db, "messages"),
+    where("postId", "==", postId),
     orderBy("createdAt", "asc")
   );
 
   onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = "";
-    let hasMessage = false;
+    if (snapshot.empty) {
+      messagesDiv.innerHTML = "<p>まだメッセージはありません。送信してみましょう。</p>";
+      return;
+    }
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      // 投稿IDで絞り込み
-      if (data.postId !== postId) return;
-
-      hasMessage = true;
-
       const msgEl = document.createElement("div");
       msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
-      const time = data.createdAt
-        ? new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleString()
-        : "";
+
+      // createdAt は Firestore Timestamp か Date か両方対応
+      let time = "";
+      if (data.createdAt) {
+        if (data.createdAt.seconds) {
+          time = new Date(data.createdAt.seconds * 1000).toLocaleString();
+        } else {
+          time = new Date(data.createdAt).toLocaleString();
+        }
+      }
+
       msgEl.innerHTML = `
         <p><strong>${data.fromName || data.fromUid}</strong></p>
         <p>${data.text}</p>
@@ -103,10 +107,6 @@ function loadMessages(myUid, targetUid, targetName) {
       `;
       messagesDiv.appendChild(msgEl);
     });
-
-    if (!hasMessage) {
-      messagesDiv.innerHTML = "<p>まだメッセージはありません。送信してみましょう。</p>";
-    }
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
