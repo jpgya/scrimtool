@@ -39,3 +39,25 @@ input, select, button {
   border-radius: 8px;
   border: 1px solid #ddd;
 }
+
+.profile-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.profile-info, .profile-scrims {
+  margin-bottom: 40px;
+}
+
+.profile-info input {
+  display: block;
+  width: 100%;
+  margin: 6px 0 12px;
+  padding: 8px;
+}
+
+.profile-info button {
+  padding: 8px 16px;
+  cursor: pointer;
+}

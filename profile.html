@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プロフィール | ScrimConnect</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/firebase.js"></script>
+  <script type="module" src="js/profile.js"></script>
+</head>
+<body>
+  <header>
+    <h1>ScrimConnect</h1>
+    <nav>
+      <a href="index.html">ホーム</a>
+      <a href="post.html">＋投稿</a>
+      <a href="profile.html" class="active">プロフィール</a>
+      <a href="dm.html">DM</a>
+    </nav>
+  </header>
+
+  <main class="profile-container">
+    <section class="profile-info">
+      <h2>プロフィール情報</h2>
+      <form id="profileForm">
+        <label>
+          表示名：
+          <input type="text" id="displayName" required>
+        </label>
+        <label>
+          Twitter：
+          <input type="text" id="twitter" placeholder="@username">
+        </label>
+        <label>
+          Discord：
+          <input type="text" id="discord" placeholder="username#1234">
+        </label>
+        <button type="submit">保存</button>
+      </form>
+    </section>
+
+    <section class="profile-scrims">
+      <h2>開催したスクリム一覧</h2>
+      <div id="myScrims">
+        <!-- 自分が主催したスクリムを表示 -->
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      &copy; 2025 ScrimConnect |
+      <a href="terms.html">利用規約</a>
+    </p>
+  </footer>
+</body>
+</html>
