@@ -1,3 +1,4 @@
+// js/dm.js
 import { auth, db } from "./firebase.js";
 import { collection, doc, getDoc, query, where, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -25,21 +26,19 @@ auth.onAuthStateChanged(async user => {
   if (postId) {
     const postDoc = await getDoc(doc(db, "scrims", postId));
     if (!postDoc.exists()) {
-      alert("投稿が存在しません");
+      messagesDiv.innerHTML = "<p>投稿が存在しません</p>";
+      sendBtn.disabled = true;
       return;
     }
     const postData = postDoc.data();
     currentChatUid = postData.userUid;
     currentChatName = postData.userName || "不明";
-    loadMessages(myUid, currentChatUid, currentChatName);
   } 
   // 新規DM
   else if (userIdParam) {
     currentChatUid = userIdParam;
-    // Firestoreから相手の名前を取得
     const userDoc = await getDoc(doc(db, "users", currentChatUid));
     currentChatName = userDoc.exists() ? userDoc.data().name : "名無し";
-    loadMessages(myUid, currentChatUid, currentChatName);
   } 
   else {
     messagesDiv.innerHTML = "<p>チャット対象が指定されていません</p>";
@@ -47,7 +46,10 @@ auth.onAuthStateChanged(async user => {
     return;
   }
 
-  // メッセージ送信
+  // メッセージ読み込み
+  loadMessages(myUid, currentChatUid, currentChatName);
+
+  // 送信ボタン
   sendBtn.addEventListener("click", async () => {
     const text = msgInput.value.trim();
     if (!text) return;
@@ -62,6 +64,7 @@ auth.onAuthStateChanged(async user => {
       createdAt: new Date(),
       postId: postId || null
     });
+
     msgInput.value = "";
   });
 });
@@ -77,11 +80,15 @@ function loadMessages(myUid, targetUid, targetName) {
 
   onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = "";
+
+    let hasMessages = false;
+
     snapshot.forEach(doc => {
       const data = doc.data();
       // 自分と相手のやりとりだけ表示
       if ((data.fromUid === myUid && data.toUid === targetUid) ||
           (data.fromUid === targetUid && data.toUid === myUid)) {
+        hasMessages = true;
         const msgEl = document.createElement("div");
         msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
         const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "";
@@ -89,6 +96,11 @@ function loadMessages(myUid, targetUid, targetName) {
         messagesDiv.appendChild(msgEl);
       }
     });
+
+    if (!hasMessages) {
+      messagesDiv.innerHTML = "<p>まだメッセージはありません</p>";
+    }
+
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 }
