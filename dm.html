@@ -1,31 +1,55 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>DM — ScrimSNS</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .chat-messages {
+      height: 70vh;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #f3f7fb;
+    }
+    .msg {
+      max-width: 78%;
+      padding: 10px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .msg.you {
+      align-self: flex-end;
+      background: linear-gradient(180deg, #1d9bf0,#1673c8);
+      color: #fff;
+    }
+    .msg.other {
+      align-self: flex-start;
+      background: #fff;
+      color: #333;
+    }
+    .chat-meta { font-size: 0.8rem; color: #666; }
+  </style>
 </head>
 <body>
   <header>
-    <h1>ScrimSNS — DM</h1>
+    <h1>ScrimSNS — 自分宛てのDM</h1>
     <nav>
       <a href="home.html">🏠 ホーム</a>
-      <a href="post.html">＋投稿</a>
       <a href="profile.html">👤 プロフィール</a>
     </nav>
   </header>
 
-  <section>
-    <h2>ユーザーにDMを送る</h2>
-    <input id="searchUser" placeholder="ユーザー名で検索">
-    <input id="dmInput" placeholder="メッセージを入力">
-    <button id="sendBtn">送信</button>
-  </section>
-
-  <main id="timeline">
-    <h2>自分宛てのDM</h2>
+  <main>
+    <div id="messages" class="chat-messages">
+      <p>読み込み中…</p>
+    </div>
   </main>
 
+  <!-- Firebase用JS -->
   <script type="module" src="js/dm.js"></script>
 </body>
 </html>
