@@ -34,23 +34,19 @@
   </header>
 
   <main>
-    <!-- 相手の名前を表示 -->
     <div class="chat-header" id="chatHeader">読み込み中...</div>
-
     <div id="messages" class="chat-messages">
       <p>読み込み中…</p>
     </div>
-
     <div class="chat-input">
       <input id="msgInput" placeholder="メッセージを入力" />
       <button id="sendBtn" disabled>送信</button>
     </div>
   </main>
 
-  <!-- Firebase用JS -->
   <script type="module">
     import { auth, db } from "./firebase.js";
-    import { collection, doc, getDoc, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { collection, doc, getDoc, setDoc, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const messagesDiv = document.getElementById("messages");
     const msgInput = document.getElementById("msgInput");
@@ -58,7 +54,7 @@
     const chatHeader = document.getElementById("chatHeader");
 
     const urlParams = new URLSearchParams(window.location.search);
-    const postId = urlParams.get("chat"); // 投稿IDをchatIdとして使う
+    const postId = urlParams.get("chat");
 
     auth.onAuthStateChanged(async user => {
       if (!user) {
@@ -74,7 +70,7 @@
       }
 
       try {
-        // 投稿者情報を取得
+        // 投稿情報を取得
         const postDoc = await getDoc(doc(db, "scrims", postId));
         if (!postDoc.exists()) {
           messagesDiv.innerHTML = "<p>投稿が存在しません</p>";
@@ -82,13 +78,25 @@
         }
 
         const postData = postDoc.data();
-        const chatId = postId; // 投稿IDをchatIdとして利用
+        const chatId = postId; // 投稿IDをチャットIDにする
         const targetUid = postData.userUid;
         const targetName = postData.userName || "不明";
 
         chatHeader.textContent = `DM: ${targetName}`;
 
-        // メッセージ読み込み
+        // チャットが存在するか確認、なければ作成
+        const chatRef = doc(db, "chats", chatId);
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+          await setDoc(chatRef, {
+            postId: chatId,
+            user1: myUid,
+            user2: targetUid,
+            createdAt: new Date()
+          });
+        }
+
+        // メッセージの読み込み
         const messagesRef = collection(db, "chats", chatId, "messages");
         const q = query(messagesRef, orderBy("createdAt", "asc"));
         onSnapshot(q, snapshot => {
@@ -97,7 +105,6 @@
             messagesDiv.innerHTML = "<p>まだメッセージはありません。送信してみましょう。</p>";
             return;
           }
-
           snapshot.forEach(doc => {
             const data = doc.data();
             const msgEl = document.createElement("div");
@@ -113,7 +120,7 @@
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
-        // 送信
+        // 送信ボタン有効化
         sendBtn.disabled = false;
         sendBtn.onclick = async () => {
           const text = msgInput.value.trim();
