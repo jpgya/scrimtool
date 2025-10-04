@@ -1,16 +1,14 @@
-// js/dm.js
 import { auth, db } from "./firebase.js";
-import { collection, doc, getDoc, query, where, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { collection, doc, getDoc, setDoc, query, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const messagesDiv = document.getElementById("messages");
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
 
-// URLパラメータ ?chat=<投稿ID> または ?user=<相手UID>
 const urlParams = new URLSearchParams(window.location.search);
 const postId = urlParams.get("chat");
-const userIdParam = urlParams.get("user");
 
+let chatDocRef = null;
 let currentChatUid = null;
 let currentChatName = null;
 
@@ -22,84 +20,71 @@ auth.onAuthStateChanged(async user => {
   }
   const myUid = user.uid;
 
-  // 投稿DM
   if (postId) {
+    // 投稿者情報取得
     const postDoc = await getDoc(doc(db, "scrims", postId));
     if (!postDoc.exists()) {
-      messagesDiv.innerHTML = "<p>投稿が存在しません</p>";
-      sendBtn.disabled = true;
+      alert("投稿が存在しません");
       return;
     }
     const postData = postDoc.data();
     currentChatUid = postData.userUid;
     currentChatName = postData.userName || "不明";
-  } 
-  // 新規DM
-  else if (userIdParam) {
-    currentChatUid = userIdParam;
-    const userDoc = await getDoc(doc(db, "users", currentChatUid));
-    currentChatName = userDoc.exists() ? userDoc.data().name : "名無し";
-  } 
-  else {
-    messagesDiv.innerHTML = "<p>チャット対象が指定されていません</p>";
-    sendBtn.disabled = true;
-    return;
+
+    // チャットドキュメント参照
+    chatDocRef = doc(db, "chats", postId); // 投稿IDをチャットIDにする
+
+    // チャットが存在しなければ作成
+    const chatSnap = await getDoc(chatDocRef);
+    if (!chatSnap.exists()) {
+      await setDoc(chatDocRef, {
+        postId,
+        users: [myUid, currentChatUid],
+        createdAt: new Date()
+      });
+    }
+
+    // メッセージ読み込み
+    loadMessages(chatDocRef, myUid);
   }
 
-  // メッセージ読み込み
-  loadMessages(myUid, currentChatUid, currentChatName);
-
-  // 送信ボタン
   sendBtn.addEventListener("click", async () => {
+    if (!chatDocRef) return alert("相手が設定されていません");
     const text = msgInput.value.trim();
     if (!text) return;
-    if (!currentChatUid) return alert("相手が設定されていません");
 
-    await addDoc(collection(db, "messages"), {
+    await addDoc(collection(chatDocRef, "messages"), {
       fromUid: myUid,
       fromName: auth.currentUser.displayName || "名無し",
       toUid: currentChatUid,
       toName: currentChatName,
       text,
-      createdAt: new Date(),
-      postId: postId || null
+      createdAt: new Date()
     });
 
     msgInput.value = "";
   });
 });
 
-function loadMessages(myUid, targetUid, targetName) {
-  messagesDiv.innerHTML = "<p>読み込み中…</p>";
-
-  const q = query(
-    collection(db, "messages"),
-    where("fromUid", "in", [myUid, targetUid]),
-    orderBy("createdAt", "asc")
-  );
+function loadMessages(chatRef, myUid) {
+  messagesDiv.innerHTML = "";
+  const q = query(collection(chatRef, "messages"), orderBy("createdAt", "asc"));
 
   onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = "";
-
-    let hasMessages = false;
+    if (snapshot.empty) {
+      messagesDiv.innerHTML = "<p>まだメッセージはありません</p>";
+      return;
+    }
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      // 自分と相手のやりとりだけ表示
-      if ((data.fromUid === myUid && data.toUid === targetUid) ||
-          (data.fromUid === targetUid && data.toUid === myUid)) {
-        hasMessages = true;
-        const msgEl = document.createElement("div");
-        msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
-        const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "";
-        msgEl.innerHTML = `<p><strong>${data.fromName || data.fromUid}</strong></p><p>${data.text}</p><p class="chat-meta">${time}</p>`;
-        messagesDiv.appendChild(msgEl);
-      }
+      const msgEl = document.createElement("div");
+      msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
+      const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "";
+      msgEl.innerHTML = `<p><strong>${data.fromName || data.fromUid}</strong></p><p>${data.text}</p><p class="chat-meta">${time}</p>`;
+      messagesDiv.appendChild(msgEl);
     });
-
-    if (!hasMessages) {
-      messagesDiv.innerHTML = "<p>まだメッセージはありません</p>";
-    }
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
