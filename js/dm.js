@@ -46,12 +46,13 @@ auth.onAuthStateChanged(async user => {
     // メッセージを読み込む
     loadMessages(myUid, currentChatUid, currentChatName);
 
-    // 送信ボタン
+    // 送信ボタンを有効化
     sendBtn.disabled = false;
     sendBtn.onclick = async () => {
       const text = msgInput.value.trim();
       if (!text) return;
 
+      // messages コレクションが存在しなくても addDoc で自動作成される
       await addDoc(collection(db, "messages"), {
         fromUid: myUid,
         fromName: auth.currentUser.displayName || "名無し",
@@ -81,19 +82,20 @@ function loadMessages(myUid, targetUid, targetName) {
 
   onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = "";
-
     let hasMessage = false;
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      // この投稿に紐づくメッセージのみ表示
+      // 投稿IDで絞り込み
       if (data.postId !== postId) return;
 
       hasMessage = true;
 
       const msgEl = document.createElement("div");
       msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
-      const time = data.createdAt ? new Date(data.createdAt.seconds * 1000 || data.createdAt).toLocaleString() : "";
+      const time = data.createdAt
+        ? new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleString()
+        : "";
       msgEl.innerHTML = `
         <p><strong>${data.fromName || data.fromUid}</strong></p>
         <p>${data.text}</p>
