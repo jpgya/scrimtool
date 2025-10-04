@@ -25,7 +25,7 @@ auth.onAuthStateChanged(async user => {
   if (!postId) {
     messagesDiv.innerHTML = "<p>投稿IDが指定されていません</p>";
     chatHeader.textContent = "DM";
-    sendBtn.disabled = true;
+    
     return;
   }
 
@@ -37,7 +37,7 @@ auth.onAuthStateChanged(async user => {
     if (!postSnap.exists()) {
       messagesDiv.innerHTML = "<p>投稿が存在しません</p>";
       chatHeader.textContent = "DM";
-      sendBtn.disabled = true;
+      
       return;
     }
 
