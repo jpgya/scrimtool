@@ -1,17 +1,13 @@
 import { auth, db } from "./firebase.js";
-import { collection, doc, getDoc, query, where, orderBy, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { collection, doc, getDoc, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const messagesDiv = document.getElementById("messages");
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
 const chatHeader = document.getElementById("chatHeader");
 
-let currentChatUid = null;
-let currentChatName = null;
-
-// URLパラメータ ?chat=<投稿ID>
 const urlParams = new URLSearchParams(window.location.search);
-const postId = urlParams.get("chat");
+const postId = urlParams.get("chat"); // 投稿IDをchatIdとして使う
 
 auth.onAuthStateChanged(async user => {
   if (!user) {
@@ -35,79 +31,59 @@ auth.onAuthStateChanged(async user => {
       sendBtn.disabled = true;
       return;
     }
+
     const postData = postDoc.data();
-    currentChatUid = postData.userUid;
-    currentChatName = postData.userName || "不明";
+    const chatId = postId; // 投稿IDをchatIdとして利用
+    const targetUid = postData.userUid;
+    const targetName = postData.userName || "不明";
 
-    // ヘッダーに表示
-    chatHeader.textContent = `DM: ${currentChatName}`;
+    chatHeader.textContent = `DM: ${targetName}`;
 
-    // メッセージを読み込む
-    loadMessages(myUid);
+    // メッセージ読み込み
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const q = query(messagesRef, orderBy("createdAt", "asc"));
+    onSnapshot(q, snapshot => {
+      messagesDiv.innerHTML = "";
+      if (snapshot.empty) {
+        messagesDiv.innerHTML = "<p>まだメッセージはありません。送信してみましょう。</p>";
+        return;
+      }
 
-    // 送信ボタンを有効化
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const msgEl = document.createElement("div");
+        msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
+        const time = data.createdAt ? new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleString() : "";
+        msgEl.innerHTML = `
+          <p><strong>${data.fromName || data.fromUid}</strong></p>
+          <p>${data.text}</p>
+          <p class="chat-meta">${time}</p>
+        `;
+        messagesDiv.appendChild(msgEl);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // 送信
     sendBtn.disabled = false;
     sendBtn.onclick = async () => {
       const text = msgInput.value.trim();
       if (!text) return;
 
-      await addDoc(collection(db, "messages"), {
+      await addDoc(messagesRef, {
         fromUid: myUid,
         fromName: auth.currentUser.displayName || "名無し",
-        toUid: currentChatUid,
-        toName: currentChatName,
+        toUid: targetUid,
+        toName: targetName,
         text,
-        createdAt: new Date(),
-        postId
+        createdAt: new Date()
       });
-
       msgInput.value = "";
     };
-  } catch (e) {
-    console.error(e);
+
+  } catch (err) {
+    console.error(err);
     messagesDiv.innerHTML = "<p>チャットの読み込みに失敗しました</p>";
     sendBtn.disabled = true;
   }
 });
-
-function loadMessages(myUid) {
-  // 投稿IDで絞り込む
-  const q = query(
-    collection(db, "messages"),
-    where("postId", "==", postId),
-    orderBy("createdAt", "asc")
-  );
-
-  onSnapshot(q, snapshot => {
-    messagesDiv.innerHTML = "";
-    if (snapshot.empty) {
-      messagesDiv.innerHTML = "<p>まだメッセージはありません。送信してみましょう。</p>";
-      return;
-    }
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const msgEl = document.createElement("div");
-      msgEl.classList.add("msg", data.fromUid === myUid ? "you" : "other");
-
-      // createdAt は Firestore Timestamp か Date か両方対応
-      let time = "";
-      if (data.createdAt) {
-        if (data.createdAt.seconds) {
-          time = new Date(data.createdAt.seconds * 1000).toLocaleString();
-        } else {
-          time = new Date(data.createdAt).toLocaleString();
-        }
-      }
-
-      msgEl.innerHTML = `
-        <p><strong>${data.fromName || data.fromUid}</strong></p>
-        <p>${data.text}</p>
-        <p class="chat-meta">${time}</p>
-      `;
-      messagesDiv.appendChild(msgEl);
-    });
-
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  });
-}
