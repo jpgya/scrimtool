@@ -1,1 +1,54 @@
-<h1>サービス終了</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スクリム一覧 | ScrimConnect</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>ScrimConnect</h1>
+    <nav>
+      <a href="post.html">＋投稿</a>
+      <a href="profile.html">プロフィール</a>
+      <a href="dm.html">DM</a>
+    </nav>
+  </header>
+
+  <main id="timeline"></main>
+
+  <!-- フッター追加 -->
+  <footer>
+    <p>
+      &copy; 2025 ScrimConnect |
+      <a href="terms.html" class="footer-link">利用規約</a>
+    </p>
+  </footer>
+
+  <script type="module">
+    import { db } from "./js/firebase.js";
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const scrims = await getDocs(collection(db, "scrims"));
+    const timeline = document.getElementById("timeline");
+
+    scrims.forEach(doc => {
+      const data = doc.data();
+      timeline.innerHTML += `
+        <div class="post">
+          <h3>${data.title}</h3>
+          <p>キー: ${data.key}</p>
+          <p>開始: ${data.time}</p>
+          <p>ルール: ${data.rules}</p>
+          <p>マップ: ${data.map}</p>
+          <p>条件: 
+            <a href="https://twitter.com/${data.follow}" target="_blank">@${data.follow}</a>
+          </p>
+          <a href="dm.html?chat=${doc.id}" class="dm-link">💬 DM</a>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スクリム投稿</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="form-container">
+    <input id="title" placeholder="タイトル">
+    <input id="key" placeholder="カスタムキー">
+    <input id="time" type="datetime-local">
+    <input id="map" placeholder="マップ名">
+    <input id="rules" placeholder="ルール">
+    <input id="follow" placeholder="@ユーザー名（フォロー条件）">
+    <select id="method">
+      <option value="discord">Discord上</option>
+      <option value="site">本サイト上</option>
+    </select>
+    <button id="postBtn">投稿</button>
+  </div>
+
+  <script type="module" src="js/post.js"></script>
+</body>
+</html>
