@@ -1,164 +1,88 @@
-// js/dm.js
-// 必要: js/firebase.js (initializeApp, export auth, db)
-// Firestore構造:
-//  - scrims/{scrimId}        (既存)
-//  - chats/{chatId}          (meta)
-//  - chats/{chatId}/messages/{msgId} (messages)
-
 import { auth, db } from "./firebase.js";
-import {
-  doc, getDoc, setDoc, collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, where, getDocs
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-const $ = id => document.getElementById(id);
+const timeline = document.getElementById("timeline");
+const searchUser = document.getElementById("searchUser");
+const dmInput = document.getElementById("dmInput");
+const sendBtn = document.getElementById("sendBtn");
 
-const messagesEl = $("messages");
-const msgInput = $("msgInput");
-const sendBtn = $("sendBtn");
-const scrimTitleEl = $("scrimTitle");
-const scrimMetaEl = $("scrimMeta");
-const openDiscordBtn = $("openDiscord");
-const openXBtn = $("openX");
+let currentUser;
 
-// URL query から chat (scrimId) を取得
-const params = new URLSearchParams(location.search);
-const chatScrimId = params.get("chat") || params.get("scrim") || null;
-
-if (!chatScrimId) {
-  scrimTitleEl.textContent = "チャットIDが指定されていません";
-  scrimMetaEl.textContent = "dm.html?chat=<scrimId> の形式でアクセスしてください";
-  sendBtn.disabled = true;
-}
-
-let chatId = `scrim_${chatScrimId}`; // chatId の命名規則
-let unsubscribeMessages = null;
-let currentUser = null;
-
-// 初期化: 認証状態を待つ
-onAuthStateChanged(auth, async user => {
-  currentUser = user;
+// 認証チェック
+auth.onAuthStateChanged(async user => {
   if (!user) {
-    // 未ログイン時はログインページへ誘導
-    scrimTitleEl.textContent = "ログインしてください";
-    scrimMetaEl.innerHTML = `<a href="login.html">ログインページへ</a>`;
-    sendBtn.disabled = true;
+    alert("ログインしてください");
+    window.location.href = "login.html";
     return;
   }
-  sendBtn.disabled = false;
-  await initChat();
+  currentUser = user;
+  loadMyDMs();
 });
 
-// 初期化: チャット & スクリム情報取得、メッセージ購読
-async function initChat() {
-  // 1) scrim情報表示
-  try {
-    const scrimRef = doc(db, "scrims", chatScrimId);
-    const scrimSnap = await getDoc(scrimRef);
-    if (!scrimSnap.exists()) {
-      scrimTitleEl.textContent = "指定されたスクリムが見つかりません";
-      scrimMetaEl.textContent = "IDを確認してください";
-      return;
-    }
-    const scrim = scrimSnap.data();
-    scrimTitleEl.textContent = scrim.title || "（無題のスクリム）";
-    const meta = `開催: ${new Date(scrim.date).toLocaleString()} ・ マップ: ${scrim.map || '-'} ・ 主催: ${scrim.hostName || '-'}`;
-    scrimMetaEl.textContent = meta;
+// 自分宛てDMを表示
+async function loadMyDMs() {
+  const q = query(
+    collection(db, "messages"),
+    where("toUid", "==", currentUser.uid),
+    orderBy("createdAt", "asc")
+  );
 
-    // ボタン表示（Xリンク、Discordが入っていれば）
-    if (scrim.twitter) {
-      openXBtn.style.display = "inline-block";
-      openXBtn.onclick = () => window.open(`https://x.com/${encodeURIComponent(scrim.twitter.replace(/^@/,''))}`, "_blank");
-    }
-    if (scrim.discordInvite) {
-      openDiscordBtn.style.display = "inline-block";
-      openDiscordBtn.onclick = () => window.open(scrim.discordInvite, "_blank");
-    }
+  const snapshot = await getDocs(q);
+  timeline.innerHTML = "<h2>自分宛てのDM</h2>";
 
-    // 2) chats/{chatId} が無ければ作る（簡易メタ）
-    const chatRef = doc(db, "chats", chatId);
-    const chatSnap = await getDoc(chatRef);
-    if (!chatSnap.exists()) {
-      await setDoc(chatRef, {
-        scrimId: chatScrimId,
-        createdAt: serverTimestamp(),
-        lastMessageAt: serverTimestamp()
-      });
-    }
-
-    // 3) messages 購読（リアルタイム）
-    const msgsCol = collection(db, "chats", chatId, "messages");
-    const q = query(msgsCol, orderBy("createdAt", "asc"));
-    if (unsubscribeMessages) unsubscribeMessages();
-    unsubscribeMessages = onSnapshot(q, snapshot => {
-      messagesEl.innerHTML = "";
-      snapshot.forEach(doc => {
-        const m = doc.data();
-        appendMessage(doc.id, m);
-      });
-      // 最後までスクロール
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+  if (snapshot.empty) {
+    timeline.innerHTML += "<p>まだDMはありません</p>";
+  } else {
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const time = data.createdAt ? new Date(data.createdAt.seconds*1000).toLocaleString() : "";
+      timeline.innerHTML += `
+        <div class="post">
+          <p><strong>送信者:</strong> ${data.fromName || data.fromUid}</p>
+          <p>${data.text}</p>
+          <p class="small-meta">${time}</p>
+        </div>
+      `;
     });
-
-    // 4) 最新閲覧時刻をチャットメタに保存（簡易既読）
-    await setDoc(chatRef, { [`lastViewed_${currentUser.uid}`]: serverTimestamp() }, { merge: true });
-  } catch (err) {
-    console.error("initChat error:", err);
-    scrimMetaEl.textContent = "チャット初期化に失敗しました";
   }
 }
 
-// メッセージ表示ヘルパー
-function appendMessage(id, m) {
-  const div = document.createElement("div");
-  const isYou = currentUser && (m.senderUid === currentUser.uid);
-  div.className = `msg ${isYou ? 'you' : 'other'}`;
-  const name = isYou ? "あなた" : (m.senderName || m.senderUid);
-  const time = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate().toLocaleString() : '';
-  // メッセージ本文（簡易XSS対策）
-  const text = escapeHtml(m.text || '');
-  div.innerHTML = `<div style="font-size:0.85rem;opacity:0.9">${escapeHtml(name)} <span style="font-size:0.75rem;opacity:0.6;margin-left:8px">${time}</span></div>
-                   <div style="margin-top:6px">${text}</div>`;
-  messagesEl.appendChild(div);
-}
+// メッセージ送信
+sendBtn.addEventListener("click", async () => {
+  const username = searchUser.value.trim();
+  const text = dmInput.value.trim();
+  if (!username || !text) {
+    alert("ユーザー名とメッセージを入力してください");
+    return;
+  }
 
-function escapeHtml(s){
-  return (s+'').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// 送信ボタン
-sendBtn.onclick = async () => {
-  if (!currentUser) return alert("ログインしてください");
-  const text = msgInput.value.trim();
-  if (!text) return;
-  sendBtn.disabled = true;
   try {
-    const msgsCol = collection(db, "chats", chatId, "messages");
-    await addDoc(msgsCol, {
-      senderUid: currentUser.uid,
-      senderName: currentUser.displayName || currentUser.email.split('@')[0],
+    // ユーザー名からUIDを取得
+    const usersRef = collection(db, "users");
+    const usersSnapshot = await getDocs(usersRef);
+    let toUser = null;
+    usersSnapshot.forEach(u => {
+      if (u.data().name === username) toUser = u;
+    });
+
+    if (!toUser) {
+      alert("ユーザーが見つかりません");
+      return;
+    }
+
+    await addDoc(collection(db, "messages"), {
+      fromUid: currentUser.uid,
+      fromName: currentUser.displayName || currentUser.email,
+      toUid: toUser.id,
+      toName: username,
       text,
       createdAt: serverTimestamp()
     });
-    // 更新: chats.lastMessageAt
-    const chatRef = doc(db, "chats", chatId);
-    await setDoc(chatRef, { lastMessageAt: serverTimestamp() }, { merge: true });
 
-    msgInput.value = "";
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    dmInput.value = "";
+    loadMyDMs();
   } catch (err) {
-    console.error("send error", err);
-    alert("送信に失敗しました");
-  } finally {
-    sendBtn.disabled = false;
-  }
-};
-
-// Enter で送信（Shift+Enterは改行）
-msgInput.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendBtn.click();
+    console.error(err);
+    alert("送信エラー：" + err.message);
   }
 });

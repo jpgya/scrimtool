@@ -1,67 +1,31 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
   <title>DM — ScrimSNS</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <style>
-    /* DM用のちょっとした上書き */
-    .chat-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .chat-info { display:flex; gap:12px; align-items:center; }
-    .chat-messages { height:60vh; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
-    .msg { max-width:78%; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
-    .msg.you { align-self:flex-end; background:linear-gradient(180deg,#1d9bf0,#1673c8); color:#fff; }
-    .msg.other { align-self:flex-start; background:rgba(255,255,255,0.04); color:#e6eef8; }
-    .chat-input { display:flex; gap:8px; padding:12px; border-top:1px solid rgba(255,255,255,0.03); background:transparent; position:sticky; bottom:0; }
-    .chat-input input { flex:1; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit; }
-    .chat-meta { font-size:0.85rem; color:var(--muted); }
-    .small-btn { padding:6px 8px; border-radius:8px; background:rgba(255,255,255,0.04); color:inherit; border:none; cursor:pointer; }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="header">
-    <div class="brand">
-      <img src="assets/logo.png" alt="logo" />
-      <h1>ScrimSNS</h1>
-    </div>
-    <div>
-      <a href="home.html" class="btn">戻る</a>
-    </div>
+  <header>
+    <h1>ScrimSNS — DM</h1>
+    <nav>
+      <a href="home.html">🏠 ホーム</a>
+      <a href="post.html">＋投稿</a>
+      <a href="profile.html">👤 プロフィール</a>
+    </nav>
   </header>
 
-  <main class="container">
-    <section class="card chat-card">
-      <div class="chat-header">
-        <div class="chat-info">
-          <div>
-            <h2 id="scrimTitle">— ロード中 —</h2>
-            <div class="chat-meta" id="scrimMeta">読み込み中...</div>
-          </div>
-        </div>
-        <div>
-          <button id="openDiscord" class="small-btn" style="display:none">Discordで開く</button>
-          <button id="openX" class="small-btn" style="display:none">Xを開く</button>
-        </div>
-      </div>
+  <section>
+    <h2>ユーザーにDMを送る</h2>
+    <input id="searchUser" placeholder="ユーザー名で検索">
+    <input id="dmInput" placeholder="メッセージを入力">
+    <button id="sendBtn">送信</button>
+  </section>
 
-      <div id="messages" class="chat-messages" aria-live="polite"></div>
-
-      <div class="chat-input">
-        <input id="msgInput" placeholder="メッセージを入力（賞金の受け取り方法や質問など）" />
-        <button id="sendBtn" class="btn">送信</button>
-      </div>
-    </section>
+  <main id="timeline">
+    <h2>自分宛てのDM</h2>
   </main>
 
-  <nav class="navbar">
-    <a href="home.html">🏠</a>
-    <a href="create.html">🏁</a>
-    <a href="dm.html">💬</a>
-    <a href="profile.html">👤</a>
-  </nav>
-
-  <!-- Firebase（既存の js/firebase.js を使う前提） -->
   <script type="module" src="js/dm.js"></script>
 </body>
 </html>
